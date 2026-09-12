@@ -1,13 +1,15 @@
 from django.db import models
 
+# добавить поле требуемого опыта работы в вакансию
+
 class Vacancy(models.Model):
     class Source(models.TextChoices):
         HH = 'hh.ru', 'hh'
 
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'Вакансия'
-        verbose_name_plural = 'Вакансии'
+        verbose_name = 'Vacancy'
+        verbose_name_plural = 'Vacancies'
 
     title = models.CharField(max_length=100)
     company = models.CharField(max_length=100)
