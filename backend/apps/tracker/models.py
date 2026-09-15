@@ -1,3 +1,5 @@
+from encodings import mac_arabic
+
 from django.db import models
 
 # добавить поле требуемого опыта работы в вакансию
@@ -14,7 +16,10 @@ class Vacancy(models.Model):
     title = models.CharField(max_length=100)
     company = models.CharField(max_length=100)
     url = models.URLField()
-    description = models.TextField()
+    location = models.CharField(max_length=30, blank=True, default='')
+    experience = models.CharField(max_length=20, blank=True, default='')
+    description = models.TextField(null=True, blank=True)
+    employment = models.CharField(max_length=20, blank=True, default='')
     source = models.CharField(max_length=20, choices=Source.choices)
 
     salary_from = models.IntegerField(null=True, blank=True)
