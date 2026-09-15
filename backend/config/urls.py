@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.urls import include, path
 
+from apps.parsing.views import VacanciesSearchView
+
 """
 URL configuration for config project.
 
@@ -20,5 +22,6 @@ Including another URLconf
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/vacancies/search/', VacanciesSearchView.as_view()),
     path('api/', include('apps.tracker.urls'))
 ]
