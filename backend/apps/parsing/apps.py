@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class ParsingConfig(AppConfig):
-    name = 'parsing'
+    name = 'apps.parsing'
