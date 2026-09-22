@@ -21,6 +21,7 @@ class Vacancy(models.Model):
     description = models.TextField(null=True, blank=True)
     employment = models.CharField(max_length=20, blank=True, default='')
     source = models.CharField(max_length=20, choices=Source.choices)
+    work_format = models.CharField(max_length=50, blank=True, default='')
 
     salary_from = models.IntegerField(null=True, blank=True)
     salary_to = models.IntegerField(null=True, blank=True)

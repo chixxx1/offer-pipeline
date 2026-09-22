@@ -1,6 +1,7 @@
 from django.core.management import BaseCommand
-from apps.parsing.services.hh_parser import search_vacancies
-from apps.parsing.services.hh_parser import save_vacancy
+from apps.parsing.services.hh_parser import search_vacancies, save_vacancy
+
+import json
 
 class Command(BaseCommand):
     help = ''
