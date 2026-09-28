@@ -1,5 +1,5 @@
 from django.core.management import BaseCommand
-from apps.parsing.services.hh_parser import search_vacancies, save_vacancy
+from apps.parsing.services.hh_parser import search_vacancies, save_vacancy, fetch_vacancy_description
 
 import json
 

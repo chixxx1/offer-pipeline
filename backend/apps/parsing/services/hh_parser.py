@@ -16,9 +16,17 @@ def search_vacancies(url: str, query: str, page: int = 0) -> list[dict]:
 
     return [extract_vacancy_data(vac) for vac in vacancies]
 
+def fetch_vacancy_full_description(url: str) -> str:
+    page_obj = Fetcher.get(url, impersonate='chrome')
+    desc_block = page_obj.css('[data-qa="vacancy-description"]').first
+    if not desc_block:
+        return ''
+    return desc_block.html_content
+
+
 
 def extract_vacancy_data(vacancy: dict) -> dict:
-    work_formats_list = (vacancy.get('workFormats' or [{}])[0].get('workFormatsElement', []))
+    work_formats_list = (vacancy.get('workFormats') or [{}])[0].get('workFormatsElement', [])
     salary = extract_salary(vacancy.get('compensation') or {})
 
     return {
@@ -34,6 +42,15 @@ def extract_vacancy_data(vacancy: dict) -> dict:
         'salary_to': salary['salary_to'],
         'source': 'hh.ru',
     }
+
+def fetch_vacancy_description(url: str) -> str:
+    page_obj = Fetcher.get(url, impersonate='chrome')
+    meta_teg = page_obj.css('meta[name="description"]').first
+    
+    if not meta_teg:
+        return ''
+
+    return meta_teg.attrib.get('content', '')
 
 def extract_salary(compensation: dict):
     if not compensation or "noCompensation" in compensation:

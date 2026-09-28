@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import axios from 'axios'
 import { useApplicationStore } from '../stores/applications'
+import VacancySearchCard from '../components/VacancySearchCard.vue'
 
 const applicationStore = useApplicationStore()
 
@@ -55,19 +56,13 @@ async function handleLike(vacancy) {
     <p v-if="error" class="error-text">{{ error }}</p>
 
     <div v-if="results.length > 0" class="results-grid">
-      <div v-for="vacancy in results" :key="vacancy.id" class="vacancy-card">
-        <p class="vacancy-title">{{ vacancy.title }}</p>
-        <p class="vacancy-company">{{ vacancy.company }}</p>
-
-        <button
-          class="like-button"
-          :class="{ liked: likedVacancyIds.has(vacancy.id) }"
-          :disabled="likedVacancyIds.has(vacancy.id)"
-          @click="handleLike(vacancy)"
-        >
-          {{ likedVacancyIds.has(vacancy.id) ? '✓ Добавлено' : '❤️ Отслеживать' }}
-        </button>
-      </div>
+      <VacancySearchCard
+        v-for="vacancy in results"
+        :key="vacancy.id"
+        :vacancy="vacancy"
+        :is-liked="likedVacancyIds.has(vacancy.id)"
+        @like="handleLike"
+      />
     </div>
 
     <p v-else-if="!isLoading && query" class="empty-text">
@@ -113,43 +108,15 @@ async function handleLike(vacancy) {
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
 
-.vacancy-card {
-  background: #1e1e2e;
-  border-radius: 10px;
-  padding: 14px;
-}
-
-.vacancy-title {
-  font-weight: 600;
-  margin: 0 0 4px 0;
-  font-size: 14px;
-}
-
-.vacancy-company {
-  color: #999;
-  font-size: 13px;
-  margin: 0 0 10px 0;
-}
-
-.like-button {
-  width: 100%;
-  padding: 8px;
-  border: none;
-  border-radius: 6px;
-  background: #333;
-  color: white;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.like-button.liked {
-  background: #2ecc71;
-  cursor: default;
-}
+@media (max-width: 700px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+}с
 
 .error-text {
   color: #e74c3c;
