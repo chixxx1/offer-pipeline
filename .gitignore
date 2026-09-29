@@ -10,6 +10,7 @@ backend/build/
 backend/dist/
 backend/wheels/
 backend/*.egg-info
+backend/parse_hh_scrapling.py
 
 
 frontend/node_modules/

@@ -10,21 +10,25 @@ const props = defineProps({
 
 const emit = defineEmits(['like'])
 
-const description = ref('')
-const isLoadingDescription = ref(false)
-const descriptionError = ref(false)
+const fullDescription = ref('')
+const isLoadingFull = ref(false)
+const showFullDescription = ref(false)
 
-async function loadDescription() {
-  isLoadingDescription.value = true
-  descriptionError.value = false
+async function loadFullDescription() {
+  if (fullDescription.value) {
+    showFullDescription.value = !showFullDescription.value
+    return
+  }
+
+  isLoadingFull.value = true
   try {
-    const response = await axios.get(`/api/vacancies/${props.vacancy.id}/description/`)
-    description.value = response.data.description || 'Описание недоступно'
+    const response = await axios.get(`/api/vacancies/${props.vacancy.id}/full-description/`)
+    fullDescription.value = response.data.full_description || 'Описание недоступно'
+    showFullDescription.value = true
   } catch (err) {
-    descriptionError.value = true
-    console.error('Не удалось загрузить описание', err)
+    console.error('Не удалось загрузить подробное описание', err)
   } finally {
-    isLoadingDescription.value = false
+    isLoadingFull.value = false
   }
 }
 </script>
@@ -57,15 +61,16 @@ async function loadDescription() {
     <p class="card-company">{{ vacancy.company }}</p>
     <p v-if="vacancy.location" class="card-location">{{ vacancy.location }}</p>
 
-    <p v-if="description" class="card-description">{{ description }}</p>
-    <p v-else-if="descriptionError" class="card-description-error">Не удалось загрузить описание</p>
+    <p v-if="vacancy.description" class="card-description">{{ vacancy.description }}</p>
+
+    <div v-if="showFullDescription" class="card-full-description" v-html="fullDescription"></div>
+
     <button
-      v-else
       class="show-description-button"
-      :disabled="isLoadingDescription"
-      @click="loadDescription"
+      :disabled="isLoadingFull"
+      @click="loadFullDescription"
     >
-      {{ isLoadingDescription ? 'Загружаем...' : 'Показать описание' }}
+      {{ isLoadingFull ? 'Загружаем...' : (showFullDescription ? 'Скрыть подробности' : 'Показать подробности') }}
     </button>
 
     <a :href="vacancy.url" target="_blank" class="card-apply-button">
@@ -198,5 +203,20 @@ async function loadDescription() {
 
 .card-apply-button:hover {
   background: #1d4ed8;
+}
+
+.card-full-description {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.6;
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-top: 8px;
+  border-top: 1px solid #eee;
+}
+
+.card-full-description :deep(ul) {
+  padding-left: 20px;
 }
 </style>

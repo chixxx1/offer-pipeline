@@ -1,12 +1,36 @@
+from concurrent.futures import ThreadPoolExecutor
 from scrapling.fetchers import Fetcher
 from apps.tracker.models import Vacancy
 
-def search_vacancies(url: str, query: str, page: int = 0) -> list[dict]:
+def search_vacancies(
+    url: str,
+    query: str, 
+    page: int = 0,
+    experience: list[str] | None = None,
+    work_format: list[str] | None = None,
+    salary_from: int | None = None,
+    work_schedule_by_days: list[str] | None = None,
+    employment_form: list[str] | None = None,
+    ) -> list[dict]:
     params = {
         'text': query,
         'page': page,
     }
 
+    if experience:
+        params['experience'] = experience
+    
+    if work_format:
+        params['work_format'] = work_format
+
+    if salary_from:
+        params['salary_from'] = salary_from
+
+    if work_schedule_by_days:
+        params['work_schedule_by_days'] = work_schedule_by_days
+    
+    if employment_form:
+        params['employment_form'] = employment_form
 
     page_obj = Fetcher.get(url, params=params, impersonate='chrome')
     script_tag = page_obj.css('template#HH-Lux-InitialState').first
@@ -23,7 +47,74 @@ def fetch_vacancy_full_description(url: str) -> str:
         return ''
     return desc_block.html_content
 
+def fetch_vacancy_description(url: str) -> str:
+    page_obj = Fetcher.get(url, impersonate='chrome')
+    meta_teg = page_obj.css('meta[name="description"]').first
+    
+    if not meta_teg:
+        return ''
 
+    return meta_teg.attrib.get('content', '')
+
+def fetch_vacancy_description_parallel(urls: list[str]):
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        return list(executor.map(fetch_vacancy_description, urls))
+
+def save_vacancy_batch(vacancies_data: list[dict]) -> list[Vacancy]:
+    new_urls = []
+    for vacancy_data in vacancies_data:
+        exists = Vacancy.objects.filter(url=vacancy_data.get('url')).exists()
+        if not exists:
+            new_urls.append(vacancy_data.get('url'))
+
+    descriptions_by_url = {}
+    if new_urls:
+        description = fetch_vacancy_description_parallel(new_urls)
+        descriptions_by_url = dict(zip(new_urls, description))
+
+    saved_vacancies = []
+    for vacancy_data in vacancies_data:
+        url=vacancy_data.get('url')
+        vacancy, _ = Vacancy.objects.get_or_create(
+            url=url,
+            defaults={
+                'title': vacancy_data.get('title'),
+                'company': vacancy_data.get('company'),
+                'location': vacancy_data.get('location'),
+                'experience': vacancy_data.get('experience'),
+                'description': vacancy_data.get('description'),
+                'employment': vacancy_data.get('employment'),
+                'work_format': vacancy_data.get('work_format'),
+                'salary_from': vacancy_data.get('salary_from'),
+                'salary_to': vacancy_data.get('salary_to'),
+                'source': vacancy_data.get('source'),
+                'description': descriptions_by_url.get(url, '')
+            })
+        saved_vacancies.append(vacancy)
+
+    return saved_vacancies
+
+def save_vacancy(vacancy_data: dict) -> Vacancy:
+    vacancy, created = Vacancy.objects.get_or_create(
+        url=vacancy_data.get('url'),
+        defaults={
+            'title': vacancy_data.get('title'),
+            'company': vacancy_data.get('company'),
+            'location': vacancy_data.get('location'),
+            'experience': vacancy_data.get('experience'),
+            'description': vacancy_data.get('description'),
+            'employment': vacancy_data.get('employment'),
+            'work_format': vacancy_data.get('work_format'),
+            'salary_from': vacancy_data.get('salary_from'),
+            'salary_to': vacancy_data.get('salary_to'),
+            'source': vacancy_data.get('source'),
+        })
+
+    if created and not vacancy.description:
+        vacancy.description = fetch_vacancy_description(vacancy.url)
+        vacancy.save(update_fields=['description'])
+    
+    return vacancy
 
 def extract_vacancy_data(vacancy: dict) -> dict:
     work_formats_list = (vacancy.get('workFormats') or [{}])[0].get('workFormatsElement', [])
@@ -43,15 +134,6 @@ def extract_vacancy_data(vacancy: dict) -> dict:
         'source': 'hh.ru',
     }
 
-def fetch_vacancy_description(url: str) -> str:
-    page_obj = Fetcher.get(url, impersonate='chrome')
-    meta_teg = page_obj.css('meta[name="description"]').first
-    
-    if not meta_teg:
-        return ''
-
-    return meta_teg.attrib.get('content', '')
-
 def extract_salary(compensation: dict):
     if not compensation or "noCompensation" in compensation:
         return {
@@ -67,20 +149,3 @@ def extract_salary(compensation: dict):
         'salary_currency': compensation.get('currencyCode'),
         'salary_gross': compensation.get('gross'),
     }
-
-def save_vacancy(vacancy_data: dict) -> Vacancy:
-    vacancy, _ = Vacancy.objects.get_or_create(
-        url=vacancy_data.get('url'),
-        defaults={
-            'title': vacancy_data.get('title'),
-            'company': vacancy_data.get('company'),
-            'location': vacancy_data.get('location'),
-            'experience': vacancy_data.get('experience'),
-            'description': vacancy_data.get('description'),
-            'employment': vacancy_data.get('employment'),
-            'work_format': vacancy_data.get('work_format'),
-            'salary_from': vacancy_data.get('salary_from'),
-            'salary_to': vacancy_data.get('salary_to'),
-            'source': vacancy_data.get('source'),
-        })
-    return vacancy
