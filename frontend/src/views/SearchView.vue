@@ -1,55 +1,34 @@
 <script setup>
-import { ref } from 'vue'
-import axios from 'axios'
+import { onMounted } from 'vue'
 import { useApplicationStore } from '../stores/applications'
+import { useSearchStore } from '../stores/search'
 import VacancySearchCard from '../components/VacancySearchCard.vue'
 import FiltersPanel from '../components/FiltersPanel.vue'
+import { ref } from 'vue'
 
 const applicationStore = useApplicationStore()
-
-const query = ref('')
-const results = ref([])
-const isLoading = ref(false)
-const error = ref(null)
-const likedVacancyIds = ref(new Set())
+const searchStore = useSearchStore()
 
 const isFiltersOpen = ref(false)
-const filters = ref({
-  experience: [],
-  work_format: [],
-  salary_from: null,
-  work_schedule_by_days: [],
-  employment_form: [],
+
+onMounted(() => {
+  if (applicationStore.applications.length === 0) {
+    applicationStore.fetchApplications()
+  }
 })
 
-async function handleSearch() {
-  if (!query.value.trim()) return
-
-  isLoading.value = true
-  error.value = null
-
-  try {
-    const response = await axios.post('/api/vacancies/search/', {
-      query: query.value,
-      experience: filters.value.experience,
-      work_format: filters.value.work_format,
-      salary_from: filters.value.salary_from,
-      work_schedule_by_days: filters.value.work_schedule_by_days,
-      employment_form: filters.value.employment_form,
-  })
-    results.value = response.data
-  } catch (err) {
-    error.value = 'Не удалось выполнить поиск'
-    console.error(err)
-  } finally {
-    isLoading.value = false
-  }
-}
-
 async function handleLike(vacancy) {
-  const success = await applicationStore.createApplicationFromVacancy(vacancy.id)
-  if (success) {
-    likedVacancyIds.value.add(vacancy.id)
+  const isLiked = applicationStore.likedVacancyIds.has(vacancy.id);
+
+  if (isLiked) {
+    const appToDelete = applicationStore.applications.find(
+      (app) => app.vacancy.id === vacancy.id
+    );
+    if (appToDelete) {
+      await applicationStore.removeApplication(appToDelete.id);
+    }
+  } else {
+    await applicationStore.createApplicationFromVacancy(vacancy.id);
   }
 }
 </script>
@@ -57,44 +36,42 @@ async function handleLike(vacancy) {
 <template>
   <div class="search-page">
     <div class="search-bar">
-      <form class="search-form" @submit.prevent="handleSearch">
+      <form class="search-form" @submit.prevent="searchStore.search()">
         <input
-          v-model="query"
+          v-model="searchStore.query"
           type="text"
-          placeholder="Например: работяга"
+          placeholder="Например: python developer"
           class="search-input"
         />
-        <button type="submit" class="search-button" :disabled="isLoading">
-          {{ isLoading ? 'Ищем...' : 'Найти' }}
+        <button type="submit" class="search-button" :disabled="searchStore.isLoading">
+          {{ searchStore.isLoading ? 'Ищем...' : 'Найти' }}
         </button>
       </form>
 
-      <button class="filters-toggle" @click="isFiltersOpen = true">
-        Фильтры
-      </button>
+      <button class="filters-toggle" @click="isFiltersOpen = true">Фильтры</button>
     </div>
 
-    <p v-if="error" class="error-text">{{ error }}</p>
+    <p v-if="searchStore.error" class="error-text">{{ searchStore.error }}</p>
 
-    <div v-if="results.length > 0" class="results-grid">
+    <div v-if="searchStore.results.length > 0" class="results-grid">
       <VacancySearchCard
-        v-for="vacancy in results"
+        v-for="vacancy in searchStore.results"
         :key="vacancy.id"
         :vacancy="vacancy"
-        :is-liked="likedVacancyIds.has(vacancy.id)"
+        :is-liked="applicationStore.likedVacancyIds.has(vacancy.id)"
         @like="handleLike"
       />
     </div>
 
-    <p v-else-if="!isLoading && query" class="empty-text">
+    <p v-else-if="!searchStore.isLoading && searchStore.query" class="empty-text">
       Ничего не найдено — попробуйте другой запрос
     </p>
 
     <FiltersPanel
       :is-open="isFiltersOpen"
-      v-model="filters"
+      v-model="searchStore.filters"
       @close="isFiltersOpen = false"
-      @apply="handleSearch"
+      @apply="searchStore.search()"
     />
   </div>
 </template>

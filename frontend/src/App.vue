@@ -57,16 +57,34 @@ const toggleNav = () => {
 <style scoped>
 .app-shell {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   width: 100%;
+  overflow: hidden;
   position: relative;
+  box-sizing: border-box;
 }
 
 .app-content {
   flex: 1;
   padding: 24px;
   text-align: left;
-  overflow-x: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100vh;
+}
+
+.app-content::-webkit-scrollbar {
+  width: 8px;
+}
+.app-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+.app-content::-webkit-scrollbar-thumb {
+  background: var(--border, #e5e4e7);
+  border-radius: 10px;
+}
+.app-content::-webkit-scrollbar-thumb:hover {
+  background: #ccc;
 }
 
 .app-sidebar {
@@ -81,7 +99,9 @@ const toggleNav = () => {
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   flex-shrink: 0;
-  margin-right: 8px;
+  height: 100vh;
+  margin: 8px 8px 8px 0;
+  box-sizing: border-box;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -223,8 +243,16 @@ const toggleNav = () => {
 @media (max-width: 768px) {
   .app-shell {
     flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
   }
   
+  .app-content {
+    height: auto;
+    overflow-y: visible;
+  }
+
   .app-sidebar {
     width: 100%;
     border-right: none;
@@ -234,6 +262,8 @@ const toggleNav = () => {
     padding-top: 12px;
     margin-right: 0;
     margin-bottom: 8px;
+    height: auto;
+    position: static;
   }
 
   .app-sidebar.is-collapsed {

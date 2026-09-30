@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted, computed } from 'vue';
-import  draggable from 'vuedraggable';
+import { onMounted, computed, ref } from 'vue';
+import draggable from 'vuedraggable';
 import { useApplicationStore } from '../stores/applications'
+import ApplicationDetailModal from './ApplicationDetailModal.vue'
 
 const store = useApplicationStore()
+const selectedApplication = ref(null)
 
 onMounted(() => {
     store.fetchApplications()
@@ -30,6 +32,11 @@ function onChange(event, statusKey) {
     const movedApplication = event.added.element
     store.updateStatus(movedApplication.id, statusKey)
   }
+}
+
+async function handleDeleteCard(applicationId, event) {
+  event.stopPropagation();
+  await store.removeApplication(applicationId);
 }
 </script>
 
@@ -58,14 +65,29 @@ function onChange(event, statusKey) {
           @change="(event) => onChange(event, column.key)"
         >
           <template #item="{ element }">
-            <div class="card">
+            <div class="card" @click="selectedApplication = element">
               <p class="card-title">{{ element.vacancy.title }}</p>
               <p class="card-company">{{ element.vacancy.company }}</p>
+              <p v-if="element.notes" class="card-notes-indicator">📝 Есть заметка</p>
+
+              <button
+                class="card-delete-btn" 
+                @click="handleDeleteCard(element.id, $event)"
+                title="Удалить из доски"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+
             </div>
           </template>
         </draggable>
       </div>
     </div>
+
+    <ApplicationDetailModal :application="selectedApplication" @close="selectedApplication = null" />
   </div>
 </template>
 
@@ -121,6 +143,38 @@ function onChange(event, statusKey) {
   padding: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   cursor: grab;
+  position: relative;
+  transition: box-shadow 0.2s;
+}
+
+.card:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card:hover .card-delete-btn {
+  opacity: 1;
+}
+
+.card-delete-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
 }
 
 .card:active {
@@ -153,5 +207,11 @@ function onChange(event, statusKey) {
   opacity: 0.9;
   transform: rotate(2deg);
   cursor: grabbing;
+}
+
+.card-notes-indicator {
+  font-size: 11px;
+  color: #888;
+  margin: 4px 0 0 0;
 }
 </style>

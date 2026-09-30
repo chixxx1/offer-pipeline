@@ -8,6 +8,11 @@ export const useApplicationStore = defineStore("applications", {
     error: null,
   }),
 
+  getters: {
+    likedVacancyIds: (state) =>
+      new Set(state.applications.map((app) => app.vacancy.id)),
+  },
+
   actions: {
     async fetchApplications() {
       this.isLoading = true;
@@ -46,10 +51,46 @@ export const useApplicationStore = defineStore("applications", {
           vacancy_id: vacancyId,
           status: "found",
         });
-        this.applications.push(response.data);
+        const alreadyExists = this.applications.some(
+          (app) => app.id === response.data.id,
+        );
+        if (!alreadyExists) {
+          this.applications.push(response.data);
+        }
         return true;
       } catch (err) {
         console.error("Не удалось добавить вакансию в отклики", err);
+        return false;
+      }
+    },
+
+    async updateNotes(applicationId, notes) {
+      try {
+        const response = await axios.patch(
+          `/api/applications/${applicationId}/`,
+          { notes },
+        );
+        const index = this.applications.findIndex(
+          (a) => a.id === applicationId,
+        );
+        if (index !== -1) {
+          this.applications[index] = response.data;
+        }
+        return true;
+      } catch (err) {
+        console.error("Не удалось сохранить заметку", err);
+        return false;
+      }
+    },
+    async removeApplication(applicationId) {
+      try {
+        await axios.delete(`/api/applications/${applicationId}/`);
+        this.applications = this.applications.filter(
+          (app) => app.id !== applicationId,
+        );
+        return true;
+      } catch (err) {
+        console.error("Не удалось удалить вакансию из отслеживаемых", err);
         return false;
       }
     },

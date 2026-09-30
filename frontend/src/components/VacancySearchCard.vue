@@ -40,11 +40,11 @@ async function loadFullDescription() {
       <button
         class="like-button"
         :class="{ liked: isLiked }"
-        :disabled="isLiked"
+        :title="isLiked ? 'Удалить из отслеживаемых' : 'Добавить в отслеживаемые'"
         @click="emit('like', vacancy)"
-        aria-label="Добавить в отслеживаемые"
+        aria-label="Переключить статус отслеживания"
       >
-        {{ isLiked ? '♥' : '♡' }}
+      {{ isLiked ? '♥' : '♡' }}
       </button>
     </div>
 

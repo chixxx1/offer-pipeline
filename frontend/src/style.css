@@ -53,6 +53,8 @@
 
 body {
   margin: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 h1,
@@ -158,13 +160,15 @@ code {
 }
 
 #app {
-  width: 1126px;
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  min-height: 100svh;
-  display: block;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   box-sizing: border-box;
   background: var(--bg);
+  overflow: hidden;
 }
 
 #center {
