@@ -2,6 +2,9 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.parsing.views import VacanciesSearchView, VacancyFullDescriptionView
+from apps.tracker.views import RegisterView, MeView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 
 """
 URL configuration for config project.
@@ -22,6 +25,10 @@ Including another URLconf
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/auth/register/', RegisterView.as_view()),
+    path('api/auth/login/', TokenObtainPairView.as_view()),
+    path('api/auth/refresh/', TokenRefreshView.as_view()),
+    path('api/auth/me/', MeView.as_view()),
     path('api/vacancies/search/', VacanciesSearchView.as_view()),
     path('api/vacancies/<int:vacancy_id>/full-description/', VacancyFullDescriptionView.as_view()),
     path('api/', include('apps.tracker.urls'))

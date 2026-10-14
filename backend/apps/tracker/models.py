@@ -1,8 +1,6 @@
-from encodings import mac_arabic
-
 from django.db import models
+from django.conf import settings
 
-# добавить поле требуемого опыта работы в вакансию
 
 class Vacancy(models.Model):
     class Source(models.TextChoices):
@@ -33,6 +31,15 @@ class Vacancy(models.Model):
 
 
 class Application(models.Model):
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='application'
+    )
+
     class Status(models.TextChoices):
         FOUND = 'found', 'найдено'
         APPLIED = 'applied', 'откликнулся'
@@ -53,3 +60,15 @@ class Application(models.Model):
 
     def __str__(self) -> str:
         return f"{self.vacancy}, status {self.status}"
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
+
+    desc = models.TextField(blank=True)
+
+    def __str__(self) -> str:
+        return f"profile: {self.user.username}"
