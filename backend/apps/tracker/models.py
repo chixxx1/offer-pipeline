@@ -60,15 +60,3 @@ class Application(models.Model):
 
     def __str__(self) -> str:
         return f"{self.vacancy}, status {self.status}"
-
-class UserProfile(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='profile'
-    )
-
-    desc = models.TextField(blank=True)
-
-    def __str__(self) -> str:
-        return f"profile: {self.user.username}"

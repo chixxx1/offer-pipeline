@@ -31,5 +31,6 @@ urlpatterns = [
     path('api/auth/me/', MeView.as_view()),
     path('api/vacancies/search/', VacanciesSearchView.as_view()),
     path('api/vacancies/<int:vacancy_id>/full-description/', VacancyFullDescriptionView.as_view()),
-    path('api/', include('apps.tracker.urls'))
+    path('api/', include('apps.tracker.urls')),
+    path('api/', include('apps.users.urls'))
 ]

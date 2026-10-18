@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'apps.tracker',
-    'apps.parsing'
+    'apps.parsing',
+    'apps.users'
 ]
 
 REST_FRAMEWORK = {
@@ -133,6 +134,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Media files (user uploads, e.g. resumes)
+# https://docs.djangoproject.com/en/6.1/topics/files/
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # Email
