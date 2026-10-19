@@ -45,6 +45,14 @@ const toggleNav = () => {
           </svg>
           <span class="nav-text">Поиск вакансий</span>
         </router-link>
+
+        <router-link to="/profile" class="nav-link" active-class="nav-link-active">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span class="nav-text">Профиль</span>
+        </router-link>
       </nav>
     </aside>
 
@@ -57,7 +65,7 @@ const toggleNav = () => {
 <style scoped>
 .app-shell {
   display: flex;
-  height: 100vh;
+  height: 100%;
   width: 100%;
   overflow: hidden;
   position: relative;
@@ -70,7 +78,7 @@ const toggleNav = () => {
   text-align: left;
   overflow-y: auto;
   overflow-x: hidden;
-  height: 100vh;
+  height: 100%;
 }
 
 .app-content::-webkit-scrollbar {
@@ -99,9 +107,9 @@ const toggleNav = () => {
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   flex-shrink: 0;
-  height: 100vh;
+  height: 100%;
   margin: 8px 8px 8px 0;
-  box-sizing: border-box;
+  /* box-sizing: border-box; */
 }
 
 @media (prefers-color-scheme: dark) {
