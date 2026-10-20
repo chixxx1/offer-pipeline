@@ -1,17 +1,36 @@
-from concurrent.futures import ThreadPoolExecutor
 from scrapling.fetchers import Fetcher
 from apps.tracker.models import Vacancy
 
+
+class CaptchaDetected(Exception):
+    """Исключение, которое выбрасывается, когда hh.ru отдаёт страницу с капчей."""
+
+
+def _raise_if_captcha(page, url: str) -> None:
+    """Проверяет ответ hh.ru на наличие капчи и бросает исключение при обнаружении."""
+    final_url = str(getattr(page, 'url', '') or '')
+    text = ''
+    try:
+        text = getattr(page, 'text', '') or ''
+    except Exception:
+        text = ''
+    combined = (final_url + ' ' + text).lower()
+    if '/account/captcha' in combined or 'captcha' in combined:
+        raise CaptchaDetected(
+            'hh.ru временно запросил капчу, подождите несколько минут'
+        )
+
+
 def search_vacancies(
     url: str,
-    query: str, 
+    query: str,
     page: int = 0,
     experience: list[str] | None = None,
     work_format: list[str] | None = None,
     salary_from: int | None = None,
     work_schedule_by_days: list[str] | None = None,
     employment_form: list[str] | None = None,
-    ) -> list[dict]:
+) -> list[dict]:
     params = {
         'text': query,
         'page': page,
@@ -19,7 +38,7 @@ def search_vacancies(
 
     if experience:
         params['experience'] = experience
-    
+
     if work_format:
         params['work_format'] = work_format
 
@@ -28,53 +47,44 @@ def search_vacancies(
 
     if work_schedule_by_days:
         params['work_schedule_by_days'] = work_schedule_by_days
-    
+
     if employment_form:
         params['employment_form'] = employment_form
 
     page_obj = Fetcher.get(url, params=params, impersonate='chrome')
-    script_tag = page_obj.css('template#HH-Lux-InitialState').first
+    _raise_if_captcha(page_obj, url)
 
+    script_tag = page_obj.css('template#HH-Lux-InitialState').first
     data = script_tag.json()
     vacancies = data.get('vacancySearchResult', {}).get('vacancies')
 
     return [extract_vacancy_data(vac) for vac in vacancies]
 
+
 def fetch_vacancy_full_description(url: str) -> str:
     page_obj = Fetcher.get(url, impersonate='chrome')
+    _raise_if_captcha(page_obj, url)
     desc_block = page_obj.css('[data-qa="vacancy-description"]').first
     if not desc_block:
         return ''
     return desc_block.html_content
 
+
 def fetch_vacancy_description(url: str) -> str:
     page_obj = Fetcher.get(url, impersonate='chrome')
+    _raise_if_captcha(page_obj, url)
     meta_teg = page_obj.css('meta[name="description"]').first
-    
+
     if not meta_teg:
         return ''
 
     return meta_teg.attrib.get('content', '')
 
-def fetch_vacancy_description_parallel(urls: list[str]):
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        return list(executor.map(fetch_vacancy_description, urls))
 
 def save_vacancy_batch(vacancies_data: list[dict]) -> list[Vacancy]:
-    new_urls = []
-    for vacancy_data in vacancies_data:
-        exists = Vacancy.objects.filter(url=vacancy_data.get('url')).exists()
-        if not exists:
-            new_urls.append(vacancy_data.get('url'))
-
-    descriptions_by_url = {}
-    if new_urls:
-        description = fetch_vacancy_description_parallel(new_urls)
-        descriptions_by_url = dict(zip(new_urls, description))
-
     saved_vacancies = []
     for vacancy_data in vacancies_data:
-        url=vacancy_data.get('url')
+        url = vacancy_data.get('url')
         vacancy, _ = Vacancy.objects.get_or_create(
             url=url,
             defaults={
@@ -82,17 +92,17 @@ def save_vacancy_batch(vacancies_data: list[dict]) -> list[Vacancy]:
                 'company': vacancy_data.get('company'),
                 'location': vacancy_data.get('location'),
                 'experience': vacancy_data.get('experience'),
-                'description': vacancy_data.get('description'),
+                'description': vacancy_data.get('description', ''),
                 'employment': vacancy_data.get('employment'),
                 'work_format': vacancy_data.get('work_format'),
                 'salary_from': vacancy_data.get('salary_from'),
                 'salary_to': vacancy_data.get('salary_to'),
                 'source': vacancy_data.get('source'),
-                'description': descriptions_by_url.get(url, '')
             })
         saved_vacancies.append(vacancy)
 
     return saved_vacancies
+
 
 def save_vacancy(vacancy_data: dict) -> Vacancy:
     vacancy, created = Vacancy.objects.get_or_create(
@@ -102,7 +112,7 @@ def save_vacancy(vacancy_data: dict) -> Vacancy:
             'company': vacancy_data.get('company'),
             'location': vacancy_data.get('location'),
             'experience': vacancy_data.get('experience'),
-            'description': vacancy_data.get('description'),
+            'description': vacancy_data.get('description', ''),
             'employment': vacancy_data.get('employment'),
             'work_format': vacancy_data.get('work_format'),
             'salary_from': vacancy_data.get('salary_from'),
@@ -110,11 +120,8 @@ def save_vacancy(vacancy_data: dict) -> Vacancy:
             'source': vacancy_data.get('source'),
         })
 
-    if created and not vacancy.description:
-        vacancy.description = fetch_vacancy_description(vacancy.url)
-        vacancy.save(update_fields=['description'])
-    
     return vacancy
+
 
 def extract_vacancy_data(vacancy: dict) -> dict:
     work_formats_list = (vacancy.get('workFormats') or [{}])[0].get('workFormatsElement', [])
@@ -134,6 +141,7 @@ def extract_vacancy_data(vacancy: dict) -> dict:
         'source': 'hh.ru',
     }
 
+
 def extract_salary(compensation: dict):
     if not compensation or "noCompensation" in compensation:
         return {
@@ -141,9 +149,9 @@ def extract_salary(compensation: dict):
             'salary_to': None,
             'salary_currency': None,
             'salary_gross': None,
-        } 
+        }
 
-    return {   
+    return {
         'salary_from': compensation.get('from'),
         'salary_to': compensation.get('to'),
         'salary_currency': compensation.get('currencyCode'),
