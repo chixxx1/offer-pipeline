@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class Vacancy(models.Model):
@@ -24,10 +25,51 @@ class Vacancy(models.Model):
     salary_from = models.IntegerField(null=True, blank=True)
     salary_to = models.IntegerField(null=True, blank=True)
 
+    skills = models.ManyToManyField('users.Skill', blank=True, related_name='vacancies')
+    published_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self) -> str:
         return f"{self.title}, company {self.company}"
+
+
+class VacancyRecommendation(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='recommendations',
+    )
+    vacancy = models.ForeignKey(
+        'tracker.Vacancy',
+        on_delete=models.CASCADE,
+        related_name='recommendations',
+    )
+    variant = models.ForeignKey(
+        'users.ProfileVariant',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vacancy_recommendations',
+    )
+    score = models.PositiveSmallIntegerField(default=0)
+    matched_skills = models.JSONField(default=list)
+    missing_skills = models.JSONField(default=list)
+    reasons = models.JSONField(default=list)
+    is_new = models.BooleanField(default=True)
+    is_dismissed = models.BooleanField(default=False)
+    notified_in_tg = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('user', 'vacancy')]
+        ordering = ['-created_at']
+        verbose_name = 'Vacancy recommendation'
+        verbose_name_plural = 'Vacancy recommendations'
+
+    def __str__(self) -> str:
+        return f'{self.vacancy.title} -> {self.user.username} (score {self.score})'
 
 
 class Application(models.Model):

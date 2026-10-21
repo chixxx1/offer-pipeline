@@ -19,6 +19,7 @@ class VacanciesSearchView(APIView):
         salary_from = request.data.get('salary_from')
         work_schedule_by_days = request.data.get('work_schedule_by_days')
         employment_form = request.data.get('employment_form')
+        order_by = request.data.get('order_by')
 
         if not query:
             return Response({}, status=400)
@@ -32,6 +33,7 @@ class VacanciesSearchView(APIView):
                 salary_from=salary_from,
                 work_schedule_by_days=work_schedule_by_days,
                 employment_form=employment_form,
+                order_by=order_by,
             )
         except CaptchaDetected as exc:
             return Response(

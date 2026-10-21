@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useProfileStore } from '../../stores/profile'
 
 const props = defineProps({
+  // Навыки могут прийти как массив строк ["python", "django"]
+  // или как массив объектов [{ id, name }].
   skills: { type: Array, default: () => [] },
 })
 
@@ -13,72 +15,111 @@ const profileStore = useProfileStore()
 const skillInput = ref('')
 const skillSuggestions = ref([])
 const showSuggestions = ref(false)
-const selectedSkillIds = ref([])
 const isLoadingSkills = ref(false)
+
+let suggestionsTimer = null
+
+// Нормализуем навыки к единому виду { id, name }.
+// Строки получают устойчивый id на основе названия.
+const normalizedSkills = computed(() => {
+  return (props.skills || []).map((s, index) => {
+    if (typeof s === 'string') {
+      return { id: `skill_${index}_${s}`, name: s }
+    }
+    return { id: s.id || `skill_${index}_${s.name}`, name: s.name }
+  })
+})
 
 function normalizeSkillName(name) {
   return name.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+// Синхронизируем выбранные ID с актуальным списком навыков из props.
+const selectedSkillIds = computed(() => normalizedSkills.value.map(s => s.id))
+
 async function fetchSuggestions(query) {
+  if (suggestionsTimer) {
+    clearTimeout(suggestionsTimer)
+    suggestionsTimer = null
+  }
   if (!query.trim()) {
     skillSuggestions.value = []
     showSuggestions.value = false
     return
   }
-  isLoadingSkills.value = true
-  try {
-    const data = await profileStore.fetchSkills(query)
-    skillSuggestions.value = data.filter(s =>
-      !props.skills.some(existing => existing.name.toLowerCase() === s.name.toLowerCase()) &&
-      !selectedSkillIds.value.includes(s.id)
-    )
-    showSuggestions.value = skillSuggestions.value.length > 0
-  } catch (err) {
-    skillSuggestions.value = []
-    showSuggestions.value = false
-  } finally {
-    isLoadingSkills.value = false
-  }
+  // Debounce, чтобы не слать запрос на каждый символ ввода.
+  suggestionsTimer = setTimeout(async () => {
+    isLoadingSkills.value = true
+    try {
+      const data = await profileStore.fetchSkills(query)
+      const existingNames = new Set(normalizedSkills.value.map(s => s.name.toLowerCase()))
+      skillSuggestions.value = data.filter(
+        (s) => !existingNames.has(s.name.toLowerCase())
+      )
+      showSuggestions.value = skillSuggestions.value.length > 0
+    } catch (err) {
+      skillSuggestions.value = []
+      showSuggestions.value = false
+    } finally {
+      isLoadingSkills.value = false
+    }
+  }, 300)
 }
 
-function selectSuggestion(skill) {
+function skillsAsNames() {
+  return normalizedSkills.value.map((s) => s.name)
+}
+
+async function selectSuggestion(skill) {
+  if (suggestionsTimer) {
+    clearTimeout(suggestionsTimer)
+    suggestionsTimer = null
+  }
   const normalized = normalizeSkillName(skill.name)
-  if (!props.skills.some(s => s.name.toLowerCase() === normalized) &&
-      !selectedSkillIds.value.includes(skill.id)) {
-    selectedSkillIds.value.push(skill.id)
-    const updatedSkills = [...props.skills, skill]
+  const exists = normalizedSkills.value.some(
+    (s) => s.name.toLowerCase() === normalized
+  )
+  if (!exists) {
+    const updatedSkills = [...normalizedSkills.value, skill]
     emit('update', updatedSkills)
-    profileStore.updateProfile({ skills: updatedSkills.map(s => s.name) })
+    await profileStore.updateProfile({ skills: updatedSkills.map((s) => s.name) })
   }
   skillInput.value = ''
   showSuggestions.value = false
 }
 
-function addCustomSkill() {
+async function addCustomSkill() {
+  if (suggestionsTimer) {
+    clearTimeout(suggestionsTimer)
+    suggestionsTimer = null
+  }
   const normalized = normalizeSkillName(skillInput.value)
   if (!normalized) return
 
-  if (props.skills.some(s => s.name.toLowerCase() === normalized)) {
+  const exists = normalizedSkills.value.some(
+    (s) => s.name.toLowerCase() === normalized
+  )
+  if (exists) {
     skillInput.value = ''
     return
   }
 
-  const tempId = `temp_${Date.now()}`
-  const newSkill = { id: tempId, name: normalized, slug: normalized }
-  selectedSkillIds.value.push(tempId)
-  const updatedSkills = [...props.skills, newSkill]
+  const newSkill = { id: `custom_${Date.now()}`, name: normalized }
+  const updatedSkills = [...normalizedSkills.value, newSkill]
   emit('update', updatedSkills)
-  profileStore.updateProfile({ skills: updatedSkills.map(s => s.name) })
+  await profileStore.updateProfile({ skills: updatedSkills.map((s) => s.name) })
   skillInput.value = ''
   showSuggestions.value = false
 }
 
-function removeSkill(skillId) {
-  selectedSkillIds.value = selectedSkillIds.value.filter(id => id !== skillId)
-  const updatedSkills = props.skills.filter(s => s.id !== skillId)
+async function removeSkill(skillId) {
+  if (suggestionsTimer) {
+    clearTimeout(suggestionsTimer)
+    suggestionsTimer = null
+  }
+  const updatedSkills = normalizedSkills.value.filter((s) => s.id !== skillId)
   emit('update', updatedSkills)
-  profileStore.updateProfile({ skills: updatedSkills.map(s => s.name) })
+  await profileStore.updateProfile({ skills: updatedSkills.map((s) => s.name) })
 }
 
 function handleKeydown(e) {
@@ -108,10 +149,13 @@ function handleClickOutside(e) {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  selectedSkillIds.value = props.skills.map(s => s.id)
 })
 
 onUnmounted(() => {
+  if (suggestionsTimer) {
+    clearTimeout(suggestionsTimer)
+    suggestionsTimer = null
+  }
   document.removeEventListener('click', handleClickOutside)
 })
 </script>
@@ -122,7 +166,7 @@ onUnmounted(() => {
 
     <div class="skills-tags">
       <span
-        v-for="skill in skills"
+        v-for="skill in normalizedSkills"
         :key="skill.id"
         class="skill-tag"
       >
@@ -146,7 +190,6 @@ onUnmounted(() => {
         class="form-input"
         @input="fetchSuggestions(skillInput)"
         @focus="handleInputFocus"
-        :disabled="isLoadingSkills"
       />
       <span v-if="isLoadingSkills" class="loading-spinner"></span>
 

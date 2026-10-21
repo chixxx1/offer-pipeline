@@ -77,3 +77,32 @@ export function formatSalary(salaryFrom, salaryTo) {
   }
   return `до ${formatNum(salaryTo)} ₽`;
 }
+
+/**
+ * Форматирует дату публикации вакансии в человекочитаемом виде:
+ * "Сегодня, 14:30", "Вчера", "19 окт 2026".
+ */
+export function formatPublishedAt(isoString) {
+  if (!isoString) return "";
+
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const targetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  const optionsTime = { hour: "2-digit", minute: "2-digit" };
+  const optionsDate = { day: "numeric", month: "short", year: "numeric" };
+
+  if (targetDay.getTime() === today.getTime()) {
+    return `Сегодня, ${date.toLocaleTimeString("ru-RU", optionsTime)}`;
+  }
+  if (targetDay.getTime() === yesterday.getTime()) {
+    return `Вчера, ${date.toLocaleTimeString("ru-RU", optionsTime)}`;
+  }
+  return date.toLocaleDateString("ru-RU", optionsDate);
+}
+

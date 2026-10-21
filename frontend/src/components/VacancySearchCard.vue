@@ -1,11 +1,24 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
-import { formatExperience, formatWorkFormat, formatEmployment, formatSalary } from '../utils/vacancyFormatters'
+import {
+  formatExperience,
+  formatWorkFormat,
+  formatEmployment,
+  formatSalary,
+  formatPublishedAt,
+} from '../utils/vacancyFormatters'
 
 const props = defineProps({
   vacancy: { type: Object, required: true },
   isLiked: { type: Boolean, default: false },
+  match: { type: Number, default: null },
+  isNew: { type: Boolean, default: false },
+  matchedSkills: { type: Array, default: () => [] },
+  missingSkills: { type: Array, default: () => [] },
+  isRecommendation: { type: Boolean, default: false },
+  recommendationId: { type: Number, default: null },
+  onDismiss: { type: Function, default: null },
 })
 
 const emit = defineEmits(['like'])
@@ -31,10 +44,16 @@ async function loadFullDescription() {
     isLoadingFull.value = false
   }
 }
+
+function handleDismiss() {
+  if (props.onDismiss && props.recommendationId != null) {
+    props.onDismiss(props.recommendationId)
+  }
+}
 </script>
 
 <template>
-  <div class="vacancy-card">
+  <div class="vacancy-card" :class="{ recommendation: isRecommendation }">
     <div class="card-header">
       <h3 class="card-title">{{ vacancy.title }}</h3>
       <button
@@ -46,11 +65,19 @@ async function loadFullDescription() {
       >
       {{ isLiked ? '♥' : '♡' }}
       </button>
+
+      <span v-if="match !== null" class="match-badge">{{ match }}%</span>
+
+      <span v-if="isNew" class="new-badge">Новая</span>
     </div>
 
     <div class="card-meta-row">
       <span v-if="formatSalary(vacancy.salary_from, vacancy.salary_to)" class="card-salary">
         {{ formatSalary(vacancy.salary_from, vacancy.salary_to) }}
+      </span>
+
+      <span v-if="vacancy.published_at" class="card-published">
+        {{ formatPublishedAt(vacancy.published_at) }}
       </span>
 
       <span v-if="vacancy.experience" class="tag">{{ formatExperience(vacancy.experience) }}</span>
@@ -60,6 +87,15 @@ async function loadFullDescription() {
 
     <p class="card-company">{{ vacancy.company }}</p>
     <p v-if="vacancy.location" class="card-location">{{ vacancy.location }}</p>
+
+    <div v-if="matchedSkills.length || missingSkills.length" class="card-skills">
+      <span v-for="skill in matchedSkills" :key="`matched-${skill}`" class="skill-tag matched">
+        {{ skill }}
+      </span>
+      <span v-for="skill in missingSkills" :key="`missing-${skill}`" class="skill-tag missing">
+        {{ skill }}
+      </span>
+    </div>
 
     <p v-if="vacancy.description" class="card-description">{{ vacancy.description }}</p>
 
@@ -71,6 +107,10 @@ async function loadFullDescription() {
       @click="loadFullDescription"
     >
       {{ isLoadingFull ? 'Загружаем...' : (showFullDescription ? 'Скрыть подробности' : 'Показать подробности') }}
+    </button>
+
+    <button v-if="isRecommendation && onDismiss" class="dismiss-button" @click="handleDismiss">
+      Скрыть
     </button>
 
     <a :href="vacancy.url" target="_blank" class="card-apply-button">
@@ -91,11 +131,16 @@ async function loadFullDescription() {
   color: #1a1a1a;
 }
 
+.vacancy-card.recommendation {
+  border-color: #e2e8f0;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .card-title {
@@ -121,6 +166,29 @@ async function loadFullDescription() {
   cursor: default;
 }
 
+.match-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1a1a1a;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.new-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: #10b981;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-left: 6px;
+}
+
 .card-meta-row {
   display: flex;
   flex-wrap: wrap;
@@ -132,6 +200,14 @@ async function loadFullDescription() {
   font-size: 16px;
   font-weight: 700;
   color: #1a1a1a;
+}
+
+.card-published {
+  font-size: 13px;
+  color: #666;
+  background: #f2f3f5;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
 
 .tag {
@@ -154,6 +230,34 @@ async function loadFullDescription() {
   font-size: 13px;
   color: #888;
   margin: 0;
+}
+
+.card-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0 0;
+}
+
+.skill-tag {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.skill-tag.matched {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.skill-tag.missing {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  opacity: 0.9;
 }
 
 .card-description {
@@ -187,6 +291,25 @@ async function loadFullDescription() {
 .show-description-button:disabled {
   color: #999;
   cursor: default;
+}
+
+.dismiss-button {
+  background: transparent;
+  border: 1px solid #ddd;
+  color: #555;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.dismiss-button:hover {
+  background: #f4f5f7;
+  border-color: #ccc;
+  color: #1a1a1a;
 }
 
 .card-apply-button {

@@ -71,7 +71,6 @@ onMounted(() => {
         />
         <ProfileSkills
           :skills="profileStore.profile?.skills || []"
-          @update="profileStore.fetchProfile"
         />
       </div>
 
