@@ -1,0 +1,6 @@
+frontend/** linguist-vendored
+frontend/**/*.vue linguist-vendored
+frontend/**/*.js linguist-vendored
+frontend/**/*.ts linguist-vendored
+frontend/**/*.css linguist-vendored
+frontend/**/*.html linguist-vendored
